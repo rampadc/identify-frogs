@@ -6,6 +6,8 @@
  */
 
 const puppeteer = require('puppeteer');
+const stringify = require('csv-stringify/lib/sync');
+const fs = require('fs').promises;
 
 (async () => {
   const browser = await puppeteer.launch({headless: false});
@@ -23,7 +25,10 @@ const puppeteer = require('puppeteer');
   let numberOfFrogs = await page.$x(listOfFrogsButtonsXPath);
   numberOfFrogs = numberOfFrogs.length;
   
-  console.log('common name,scientific name,cloudinary url')
+  var list = [];
+  var noCallsList = [];
+  list.push(['common name','scientific name','cloudinary url']);
+  noCallsList.push(['common name','scientific name']);
   for (let i = 1; i <= numberOfFrogs; i++) {
     let buttonXPath = `//ul/li[${i}]/button`;
     let commonNameXPath = `//ul/li[${i}]/button/div/h3`;
@@ -47,8 +52,18 @@ const puppeteer = require('puppeteer');
     const commonName = await page.evaluate(elm => elm.textContent, commonNameEl);
     const scientificName = await page.evaluate(elm => elm.textContent, scientificNameEl);
     const audioSrc = await page.evaluate(elm => elm.getAttribute('src'), audioEl);
-    console.log(`${commonName},${scientificName},${audioSrc}`);
+    if (audioSrc == undefined || audioSrc.trim().length == 0) {
+      noCallsList.push([commonName, scientificName])
+    } else {
+      list.push([commonName, scientificName, audioSrc]);
+    }
+    // console.log(`${commonName},${scientificName},${audioSrc}`);
   }
 
   await browser.close();
+
+  const data = stringify(list);
+  await fs.writeFile('frogs.csv', data, 'utf8');
+  const nocalls = stringify(noCallsList);
+  await fs.writeFile('no_calls.csv', nocalls, 'utf8');
 })();
